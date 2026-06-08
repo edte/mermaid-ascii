@@ -19,6 +19,9 @@ const (
 	labelBufferSpace          = 10
 )
 
+// Keep box-drawing characters narrow while preserving CJK wide-character widths.
+var widthCondition = &runewidth.Condition{EastAsianWidth: false}
+
 type diagramLayout struct {
 	participantWidths  []int
 	participantCenters []int
@@ -35,7 +38,7 @@ func calculateLayout(sd *SequenceDiagram, config *diagram.Config) *diagramLayout
 
 	widths := make([]int, len(sd.Participants))
 	for i, p := range sd.Participants {
-		w := runewidth.StringWidth(p.Label) + boxPaddingLeftRight
+		w := widthCondition.StringWidth(p.Label) + boxPaddingLeftRight
 		if w < minBoxWidth {
 			w = minBoxWidth
 		}
@@ -99,7 +102,7 @@ func Render(sd *SequenceDiagram, config *diagram.Config) (string, error) {
 
 	lines = append(lines, buildLine(sd.Participants, layout, func(i int) string {
 		w := layout.participantWidths[i]
-		labelLen := runewidth.StringWidth(sd.Participants[i].Label)
+		labelLen := widthCondition.StringWidth(sd.Participants[i].Label)
 		pad := (w - labelLen) / 2
 		return string(chars.Vertical) + strings.Repeat(" ", pad) + sd.Participants[i].Label +
 			strings.Repeat(" ", w-pad-labelLen) + string(chars.Vertical)
@@ -134,7 +137,7 @@ func buildLine(participants []*Participant, layout *diagramLayout, draw func(int
 		boxWidth := layout.participantWidths[i] + boxBorderWidth
 		left := layout.participantCenters[i] - boxWidth/2
 
-		needed := left - len([]rune(sb.String()))
+		needed := left - widthCondition.StringWidth(sb.String())
 		if needed > 0 {
 			sb.WriteString(strings.Repeat(" ", needed))
 		}
@@ -167,25 +170,7 @@ func renderMessage(msg *Message, layout *diagramLayout, chars BoxChars) []string
 
 	if label != "" {
 		start := min(from, to) + labelLeftMargin
-		labelWidth := runewidth.StringWidth(label)
-		w := max(layout.totalWidth, start+labelWidth) + labelBufferSpace
-		line := []rune(buildLifeline(layout, chars))
-		if len(line) < w {
-			padding := make([]rune, w-len(line))
-			for k := range padding {
-				padding[k] = ' '
-			}
-			line = append(line, padding...)
-		}
-
-		col := start
-		for _, r := range label {
-			if col < len(line) {
-				line[col] = r
-				col++
-			}
-		}
-		lines = append(lines, strings.TrimRight(string(line), " "))
+		lines = append(lines, buildLabelLine(layout, chars, start, label, layout.totalWidth))
 	}
 
 	line := []rune(buildLifeline(layout, chars))
@@ -237,25 +222,8 @@ func renderSelfMessage(msg *Message, layout *diagramLayout, chars BoxChars) []st
 	}
 
 	if label != "" {
-		line := ensureWidth(buildLifeline(layout, chars))
 		start := center + labelLeftMargin
-		labelWidth := runewidth.StringWidth(label)
-		needed := start + labelWidth + labelBufferSpace
-		if len(line) < needed {
-			pad := make([]rune, needed-len(line))
-			for i := range pad {
-				pad[i] = ' '
-			}
-			line = append(line, pad...)
-		}
-		col := start
-		for _, c := range label {
-			if col < len(line) {
-				line[col] = c
-				col++
-			}
-		}
-		lines = append(lines, strings.TrimRight(string(line), " "))
+		lines = append(lines, buildLabelLine(layout, chars, start, label, layout.totalWidth+width+1))
 	}
 
 	l1 := ensureWidth(buildLifeline(layout, chars))
@@ -280,4 +248,42 @@ func renderSelfMessage(msg *Message, layout *diagramLayout, chars BoxChars) []st
 	lines = append(lines, strings.TrimRight(string(l3), " "))
 
 	return lines
+}
+
+func buildLabelLine(layout *diagramLayout, chars BoxChars, start int, label string, minWidth int) string {
+	labelWidth := widthCondition.StringWidth(label)
+	totalWidth := max(minWidth, start+labelWidth) + labelBufferSpace
+
+	var sb strings.Builder
+	pos := 0
+	labelRunes := []rune(label)
+	labelIdx := 0
+
+	for pos < totalWidth {
+		if pos >= start && labelIdx < len(labelRunes) {
+			r := labelRunes[labelIdx]
+			sb.WriteRune(r)
+			pos += widthCondition.RuneWidth(r)
+			labelIdx++
+			continue
+		}
+
+		if isParticipantCenter(layout, pos) {
+			sb.WriteRune(chars.Vertical)
+		} else {
+			sb.WriteRune(' ')
+		}
+		pos++
+	}
+
+	return strings.TrimRight(sb.String(), " ")
+}
+
+func isParticipantCenter(layout *diagramLayout, pos int) bool {
+	for _, center := range layout.participantCenters {
+		if pos == center {
+			return true
+		}
+	}
+	return false
 }
