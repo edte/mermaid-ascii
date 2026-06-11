@@ -146,6 +146,25 @@ func TestRenderGraphSeparatesBidirectionalEdgeLabelsTD(t *testing.T) {
 	}
 }
 
+func TestRenderGraphMergesEqualLengthFanInIntoMainFlow(t *testing.T) {
+	config := diagram.NewTestConfig(false, "cli")
+	output, err := RenderDiagram(`graph LR
+A[traverse] --> B[限流topic]
+B --> C[消费并发]
+A --> D[Dispatch]
+D --> C`, config)
+	if err != nil {
+		t.Fatalf("RenderDiagram() error = %v", err)
+	}
+
+	if strings.Contains(output, "▲") {
+		t.Fatalf("expected lower fan-in edge to avoid entering the target from below\noutput:\n%s", output)
+	}
+	if !strings.Contains(output, "限流topic ├──┬─►│ 消费并发") {
+		t.Fatalf("expected lower fan-in edge to merge into the main flow before target\noutput:\n%s", output)
+	}
+}
+
 func assertUniformDisplayWidth(t *testing.T, output string) {
 	t.Helper()
 

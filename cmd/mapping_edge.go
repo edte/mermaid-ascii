@@ -68,20 +68,45 @@ func (g *graph) determinePath(e *edge) {
 	}
 	alternativePath = mergePath(alternativePath)
 
-	nrStepsPreferred := len(preferredPath)
-	nrStepsAlternative := len(alternativePath)
-	if nrStepsPreferred <= nrStepsAlternative {
-		log.Debugf("Using preferred path with %v steps instead of alternative path with %v steps", nrStepsPreferred, nrStepsAlternative)
+	if g.shouldUsePreferredPath(e, preferredPath, alternativePath) {
+		log.Debugf("Using preferred path with %v steps instead of alternative path with %v steps", len(preferredPath), len(alternativePath))
 		e.startDir = preferredDir
 		e.endDir = preferredOppositeDir
 		e.path = preferredPath
 	} else {
-		log.Debugf("Using alternative path with %v steps instead of alternative path with %v steps", nrStepsAlternative, nrStepsPreferred)
+		log.Debugf("Using alternative path with %v steps instead of preferred path with %v steps", len(alternativePath), len(preferredPath))
 		e.startDir = alternativeDir
 		e.endDir = alternativeOppositeDir
 		e.path = alternativePath
 	}
 	g.edgeCounts[key]++
+}
+
+func (g *graph) shouldUsePreferredPath(e *edge, preferredPath, alternativePath []gridCoord) bool {
+	if len(preferredPath) <= len(alternativePath) {
+		return true
+	}
+	return g.prefersMainFlowEndpoint(e) && pathDistance(preferredPath) <= pathDistance(alternativePath)
+}
+
+func (g *graph) prefersMainFlowEndpoint(e *edge) bool {
+	if g.graphDirection == "LR" {
+		d := determineDirection(genericCoord(*e.from.gridCoord), genericCoord(*e.to.gridCoord))
+		return d == UpperRight || d == LowerRight
+	}
+	if g.graphDirection == "TD" {
+		d := determineDirection(genericCoord(*e.from.gridCoord), genericCoord(*e.to.gridCoord))
+		return d == LowerLeft || d == LowerRight
+	}
+	return false
+}
+
+func pathDistance(path []gridCoord) int {
+	distance := 0
+	for i := 1; i < len(path); i++ {
+		distance += Abs(path[i].x-path[i-1].x) + Abs(path[i].y-path[i-1].y)
+	}
+	return distance
 }
 
 func (g *graph) parallelDirections(e *edge, duplicateIndex int) (direction, direction, bool) {
