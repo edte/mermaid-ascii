@@ -16,6 +16,6 @@ sequenceDiagram
   │         │ Second  │
   │         ├────────►│
   │         │         │
-  │ Direct  │         │
+  │      Direct       │
   ├──────────────────►│
   │         │         │

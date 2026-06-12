@@ -23,7 +23,7 @@ sequenceDiagram
         │ pass/hit         │                 │                   │
         │◄┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┤                 │                   │
         │                  │                 │                   │
-        │ recommend        │                 │                   │
+        │             recommend              │                   │
         ├───────────────────────────────────►│                   │
         │                  │                 │                   │
         │                  │                 │ result            │
@@ -34,10 +34,10 @@ sequenceDiagram
         │                  │                 │                   │  │
         │                  │                 │                   │◄─┘
         │                  │                 │                   │
-        │                  │ ECheck/EUpdate  │                   │
+        │                  │           ECheck/EUpdate            │
         │                  │◄────────────────────────────────────┤
         │                  │                 │                   │
-        │                  │ pass/hit        │                   │
+        │                  │              pass/hit               │
         │                  ├┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈►│
         │                  │                 │                   │
         │                  │                 │                   │ send push

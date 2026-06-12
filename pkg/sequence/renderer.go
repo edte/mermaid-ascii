@@ -169,7 +169,7 @@ func renderMessage(msg *Message, layout *diagramLayout, chars BoxChars) []string
 	}
 
 	if label != "" {
-		start := min(from, to) + labelLeftMargin
+		start := messageLabelStart(msg, from, to, label)
 		lines = append(lines, buildLabelLine(layout, chars, start, label, layout.totalWidth))
 	}
 
@@ -196,6 +196,25 @@ func renderMessage(msg *Message, layout *diagramLayout, chars BoxChars) []string
 	}
 	lines = append(lines, strings.TrimRight(string(line), " "))
 	return lines
+}
+
+func messageLabelStart(msg *Message, from, to int, label string) int {
+	left, right := min(from, to), max(from, to)
+	if participantDistance(msg) <= 1 {
+		return left + labelLeftMargin
+	}
+
+	labelWidth := widthCondition.StringWidth(label)
+	centered := left + (right-left-labelWidth)/2
+	return max(left+labelLeftMargin, centered)
+}
+
+func participantDistance(msg *Message) int {
+	distance := msg.From.Index - msg.To.Index
+	if distance < 0 {
+		return -distance
+	}
+	return distance
 }
 
 func renderSelfMessage(msg *Message, layout *diagramLayout, chars BoxChars) []string {
